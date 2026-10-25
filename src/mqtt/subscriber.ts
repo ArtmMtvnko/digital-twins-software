@@ -8,7 +8,12 @@ const JOURNAL_PATH = 'logs/telemetry.jsonl';
 mkdirSync('logs', { recursive: true });
 const journal = createWriteStream(JOURNAL_PATH, { flags: 'a' });
 
-const client = connect(config.mqtt.url, { clientId: `${config.mqtt.stationId}-subscriber` });
+const client = connect(config.mqtt.url, {
+  clientId: `${config.mqtt.stationId}-subscriber`,
+  // Постійна сесія: після перепідключення брокер упізнає підписника за clientId
+  // і віддасть повідомлення QoS 1 і 2, які накопичились, поки його не було
+  clean: false,
+});
 
 let validCount = 0;
 let invalidCount = 0;
