@@ -2,8 +2,10 @@
  * Спільний «контракт» між видавцем і підписником:
  * структура топіків і формат повідомлення телеметрії (крок 4).
  */
-import { config } from './config.ts';
-import type { SensorValue } from './sensors.ts';
+import { config } from '../config.ts';
+
+/** Показання датчика: число (тиск, вібрація…), рядок (стан, режим) або логічне (сухий хід). */
+export type SensorValue = number | string | boolean;
 
 export interface TelemetryMessage {
   sensorId: string;

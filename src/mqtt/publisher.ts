@@ -1,8 +1,8 @@
 import { connect, type MqttClient } from 'mqtt';
-import { config } from './config.ts';
-import type { Reading } from './sampler.ts';
-import type { Sensor } from './sensors.ts';
-import { STATUS_TOPIC, telemetryTopic, type TelemetryMessage } from './telemetry.ts';
+import { config } from '../config.ts';
+import type { Reading } from '../emulator/sampler.ts';
+import type { Sensor } from '../emulator/sensors.ts';
+import { STATUS_TOPIC, telemetryTopic, type TelemetryMessage } from '../shared/telemetry.ts';
 
 /** Видавець: перетворює вимірювання емулятора на MQTT-повідомлення й надсилає їх у брокер. */
 export class Publisher {

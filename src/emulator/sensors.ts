@@ -1,11 +1,10 @@
-import { gaussian } from './random.ts';
+import type { SensorValue } from '../shared/telemetry.ts';
 import type { Pump } from './pump.ts';
+import { gaussian } from './random.ts';
 import type { Station } from './station.ts';
 
 /** fast = 10 Гц, normal = 1 Гц, slow = 0,1 Гц, event = лише коли значення змінилося. */
 export type Frequency = 'fast' | 'normal' | 'slow' | 'event';
-
-export type SensorValue = number | string | boolean;
 
 export interface Sensor {
   /** Ідентифікатор у форматі «компонент.величина», наприклад pump1.vibration. */
@@ -53,7 +52,6 @@ export function measure(sensor: Sensor): SensorValue {
   const noisy = trueValue === 0 ? 0 : trueValue + gaussian(0, sensor.noise ?? 0);
   const [min, max] = sensor.range ?? [-Infinity, Infinity];
   const clamped = Math.min(Math.max(noisy, min), max);
-
   const factor = 10 ** (sensor.decimals ?? 2);
   return Math.round(clamped * factor) / factor;
 }

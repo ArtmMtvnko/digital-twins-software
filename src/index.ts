@@ -1,9 +1,9 @@
-import { AnomalyScheduler } from './anomalies.ts';
+import { AnomalyScheduler } from './emulator/anomalies.ts';
 import { config } from './config.ts';
-import { Publisher } from './publisher.ts';
-import { Sampler, type Reading } from './sampler.ts';
-import { createSensors, type Sensor } from './sensors.ts';
-import { Station } from './station.ts';
+import { Publisher } from './mqtt/publisher.ts';
+import { Sampler, type Reading } from './emulator/sampler.ts';
+import { createSensors, type Sensor } from './emulator/sensors.ts';
+import { Station } from './emulator/station.ts';
 
 const station = new Station(config.startHour);
 const anomalies = new AnomalyScheduler(station, (message) => console.log(`${clock()}  ⚠ ${message}`));

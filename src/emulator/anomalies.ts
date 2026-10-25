@@ -1,4 +1,4 @@
-import { config } from './config.ts';
+import { config } from '../config.ts';
 import { pickRandom } from './random.ts';
 import type { Station } from './station.ts';
 

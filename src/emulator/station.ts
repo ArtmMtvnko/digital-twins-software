@@ -1,4 +1,4 @@
-import { config } from './config.ts';
+import { config } from '../config.ts';
 import { demandFactor, MAX_DEMAND_FACTOR } from './demand.ts';
 import { METERS_PER_BAR, Pump } from './pump.ts';
 

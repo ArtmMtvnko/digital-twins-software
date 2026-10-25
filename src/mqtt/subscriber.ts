@@ -1,7 +1,7 @@
 import { createWriteStream, mkdirSync } from 'node:fs';
 import { connect } from 'mqtt';
-import { config } from './config.ts';
-import { STATION_SUBSCRIPTION, STATUS_TOPIC, validateTelemetry } from './telemetry.ts';
+import { config } from '../config.ts';
+import { STATION_SUBSCRIPTION, STATUS_TOPIC, validateTelemetry } from '../shared/telemetry.ts';
 
 /** Журнал у форматі JSON Lines: кожен рядок — окремий JSON-запис. */
 const JOURNAL_PATH = 'logs/telemetry.jsonl';

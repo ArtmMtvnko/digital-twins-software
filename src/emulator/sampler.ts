@@ -1,5 +1,6 @@
-import { config } from './config.ts';
-import { measure, type Frequency, type Sensor, type SensorValue } from './sensors.ts';
+import { config } from '../config.ts';
+import type { SensorValue } from '../shared/telemetry.ts';
+import { measure, type Frequency, type Sensor } from './sensors.ts';
 
 /** Одне вимірювання — те, що далі піде в MQTT. */
 export interface Reading {
@@ -55,7 +56,6 @@ export class Sampler {
   }
 
   private emit(sensor: Sensor, value: SensorValue, timestamp: string): void {
-    const reading: Reading = { sensorId: sensor.id, value, unit: sensor.unit, timestamp };
-    this.onReading(reading, sensor);
+    this.onReading({ sensorId: sensor.id, value, unit: sensor.unit, timestamp }, sensor);
   }
 }

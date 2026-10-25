@@ -1,4 +1,4 @@
-import { config } from './config.ts';
+import { config } from '../config.ts';
 
 /**
  * running — працює; standby — у резерві, автоматика може запустити;
