@@ -13,8 +13,8 @@ export class Publisher {
   constructor() {
     this.client = connect(config.mqtt.url, {
       clientId: `${config.mqtt.stationId}-emulator`,
-      // Last Will: якщо емулятор зникне без попередження, брокер сам опублікує «offline»
-      will: { topic: STATUS_TOPIC, payload: Buffer.from('offline'), qos: 1, retain: true },
+      // Last Will: якщо емулятор зникне без попередження, брокер сам опублікує «connection_lost»
+      will: { topic: STATUS_TOPIC, payload: Buffer.from('connection_lost'), qos: 1, retain: true },
     });
 
     this.client.on('connect', () => {
