@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "start:subscriber": "node dist/mqtt/subscriber.js",
     "typecheck": "tsc --noEmit",
+    "analyze": "tsx scripts/analyze.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

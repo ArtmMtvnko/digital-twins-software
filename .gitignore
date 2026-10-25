@@ -20,3 +20,6 @@ pnpm-debug.log*
 
 # Editors
 .vscode/
+
+# Custom
+scripts/*.md
