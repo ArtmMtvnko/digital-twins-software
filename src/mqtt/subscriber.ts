@@ -25,20 +25,23 @@ client.on('connect', async () => {
 });
 client.on('error', (error) => console.error(`MQTT: ${error.message}`));
 
-client.on('message', (topic, payload) => {
+client.on('message', (topic, payload, packet) => {
   const receivedAt = new Date().toISOString();
   const text = payload.toString();
+  // Retained-повідомлення брокер повторно віддає при кожній підписці: позначаємо їх,
+  // щоб під час аналізу не рахувати як дублікати й не враховувати в затримці
+  const retained = packet.retain ? { retained: true } : {};
 
   if (topic === STATUS_TOPIC) {
     console.log(`${receivedAt}  ◆ Джерело даних: ${text}`);
-    writeToJournal({ receivedAt, topic, status: text });
+    writeToJournal({ receivedAt, topic, status: text, ...retained });
     return;
   }
 
   const result = validateTelemetry(topic, text);
   if (result.ok) {
     validCount++;
-    writeToJournal({ receivedAt, topic, ...result.message });
+    writeToJournal({ receivedAt, topic, ...result.message, ...retained });
   } else {
     invalidCount++;
     console.warn(`${receivedAt}  ✗ ${topic}: ${result.errors.join('; ')}`);
