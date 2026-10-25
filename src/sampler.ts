@@ -1,5 +1,5 @@
-import { config } from './config.js';
-import { measure, type Frequency, type Sensor, type SensorValue } from './sensors.js';
+import { config } from './config.ts';
+import { measure, type Frequency, type Sensor, type SensorValue } from './sensors.ts';
 
 /** Одне вимірювання — те, що далі піде в MQTT. */
 export interface Reading {

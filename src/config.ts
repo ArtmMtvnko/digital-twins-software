@@ -59,6 +59,14 @@ export const config = {
     standbyStartDelay: 5,
   },
 
+  mqtt: {
+    /** Адреса брокера. Можна змінити без правки коду: MQTT_URL=mqtt://host:1883 pnpm dev */
+    url: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
+    stationId: 'station1',
+    /** Рівень якості доставки телеметрії: 0, 1 або 2 (досліджується на кроці 7). */
+    qos: 1 as 0 | 1 | 2,
+  },
+
   anomalies: {
     /** Раз на скільки симульованих годин запускається випадкова аномалія. */
     intervalHours: 6,

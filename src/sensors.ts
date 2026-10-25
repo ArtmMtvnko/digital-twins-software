@@ -1,6 +1,6 @@
-import { gaussian } from './random.js';
-import type { Pump } from './pump.js';
-import type { Station } from './station.js';
+import { gaussian } from './random.ts';
+import type { Pump } from './pump.ts';
+import type { Station } from './station.ts';
 
 /** fast = 10 Гц, normal = 1 Гц, slow = 0,1 Гц, event = лише коли значення змінилося. */
 export type Frequency = 'fast' | 'normal' | 'slow' | 'event';

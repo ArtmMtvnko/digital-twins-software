@@ -6,6 +6,7 @@ dist/
 *.tsbuildinfo
 
 # Logs
+logs/
 *.log
 pnpm-debug.log*
 

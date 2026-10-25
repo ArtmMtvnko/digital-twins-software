@@ -1,15 +1,18 @@
-import { AnomalyScheduler } from './anomalies.js';
-import { config } from './config.js';
-import { Sampler, type Reading } from './sampler.js';
-import { createSensors, type Sensor } from './sensors.js';
-import { Station } from './station.js';
+import { AnomalyScheduler } from './anomalies.ts';
+import { config } from './config.ts';
+import { Publisher } from './publisher.ts';
+import { Sampler, type Reading } from './sampler.ts';
+import { createSensors, type Sensor } from './sensors.ts';
+import { Station } from './station.ts';
 
 const station = new Station(config.startHour);
 const anomalies = new AnomalyScheduler(station, (message) => console.log(`${clock()}  ⚠ ${message}`));
 
-// На КП 2 (крок 5) замість лічильника тут буде відправка в MQTT-брокер
+const publisher = new Publisher();
+
 let readingsThisSecond = 0;
 const sampler = new Sampler(createSensors(station), (reading: Reading, sensor: Sensor) => {
+  publisher.publish(reading, sensor);
   readingsThisSecond++;
   // Подієві сигнали трапляються рідко, тому показуємо кожен
   if (sensor.frequency === 'event') {
@@ -33,7 +36,7 @@ function printStatus(): void {
     `${clock()}  Q=${station.flow.toFixed(0)} м³/год  ` +
       `p_in=${station.inletPressure.toFixed(2)}  p_out=${station.outletPressure.toFixed(2)} бар  ` +
       `Н1: ${pump1.state} ${pump1.speed.toFixed(0)} об/хв, v=${pump1.vibration.toFixed(2)}, T=${pump1.bearingTemperature.toFixed(1)}°C  ` +
-      `Н2: ${pump2.state}  | ${readingsThisSecond} вимірювань/с`,
+      `Н2: ${pump2.state}  | надіслано ${readingsThisSecond} повідомлень/с`,
   );
   readingsThisSecond = 0;
 }
@@ -49,3 +52,9 @@ setInterval(() => {
   if (tick % ticksPerSecond === 0) printStatus();
   tick++;
 }, config.tickMs);
+
+// Ctrl+C: коректно відключаємося від брокера
+process.on('SIGINT', async () => {
+  await publisher.close();
+  process.exit(0);
+});

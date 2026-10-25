@@ -1,6 +1,6 @@
-import { config } from './config.js';
-import { pickRandom } from './random.js';
-import type { Station } from './station.js';
+import { config } from './config.ts';
+import { pickRandom } from './random.ts';
+import type { Station } from './station.ts';
 
 /** Відхилення, яке на деякий час змінює поведінку станції. */
 interface Anomaly {

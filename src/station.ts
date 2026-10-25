@@ -1,6 +1,6 @@
-import { config } from './config.js';
-import { demandFactor, MAX_DEMAND_FACTOR } from './demand.js';
-import { METERS_PER_BAR, Pump } from './pump.js';
+import { config } from './config.ts';
+import { demandFactor, MAX_DEMAND_FACTOR } from './demand.ts';
+import { METERS_PER_BAR, Pump } from './pump.ts';
 
 export type Mode = 'auto' | 'night' | 'service';
 
