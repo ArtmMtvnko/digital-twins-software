@@ -1,3 +1,4 @@
+import { config } from '../config.ts';
 import type { SensorValue } from '../shared/telemetry.ts';
 import type { Pump } from './pump.ts';
 import { gaussian } from './random.ts';
@@ -49,9 +50,21 @@ export function measure(sensor: Sensor): SensorValue {
   if (typeof trueValue !== 'number') return trueValue;
 
   // Зупинений насос показує рівно нуль, шум додаємо лише до ненульових значень
-  const noisy = trueValue === 0 ? 0 : trueValue + gaussian(0, sensor.noise ?? 0);
+  let measured = trueValue === 0 ? 0 : trueValue + gaussian(0, sensor.noise ?? 0);
+
+  // Рідкісний збій датчика: одне вимірювання різко відхиляється від справжнього значення (викид)
+  if (measured !== 0 && sensor.range && Math.random() < config.anomalies.sensorSpikeProbability) {
+    measured += spikeSize(sensor.range);
+  }
+
   const [min, max] = sensor.range ?? [-Infinity, Infinity];
-  const clamped = Math.min(Math.max(noisy, min), max);
+  const clamped = Math.min(Math.max(measured, min), max);
   const factor = 10 ** (sensor.decimals ?? 2);
   return Math.round(clamped * factor) / factor;
+}
+
+/** Стрибок на 30–60 % діапазону датчика, випадково вгору або вниз. */
+function spikeSize([min, max]: [number, number]): number {
+  const magnitude = (max - min) * (0.3 + 0.3 * Math.random());
+  return Math.random() < 0.5 ? magnitude : -magnitude;
 }
