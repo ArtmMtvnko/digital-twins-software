@@ -1,13 +1,14 @@
 /**
  * Сервіс синхронізації (КП 3).
  * Конвеєр: приймання → буфер переупорядкування → валідація → фільтр викидів → ресемплінг до 1 Гц
- * → правила синхронізації.
+ * → правила синхронізації → стан двійника в пам’яті → сповіщення підписників.
  */
 import { config } from '../config.ts';
 import { startIngest, type IncomingTelemetry } from './ingest.ts';
 import { OutlierFilter } from './outlier-filter.ts';
 import { ReorderBuffer } from './reorder-buffer.ts';
 import { Resampler, type Frame } from './resampler.ts';
+import { TwinStateStore, type TwinChange } from './state-store.ts';
 import { SyncRules } from './sync-rules.ts';
 import { validateValue } from './validation.ts';
 
@@ -18,9 +19,31 @@ const buffer = new ReorderBuffer<IncomingTelemetry>(
 const outlierFilter = new OutlierFilter();
 const resampler = new Resampler(handleFrame);
 const syncRules = new SyncRules();
+const store = new TwinStateStore(config.mqtt.stationId);
+
+// Підписник для демонстрації: виводить кожну зміну стану двійника
+store.subscribe(({ state, changes }) => {
+  console.log(`стан v${state.version}: ${changes.map(describeChange).join(', ')}`);
+});
 
 /** Лічильники за останню секунду. */
-const stats = { received: 0, late: 0, rejected: 0, outliers: 0, frames: 0, event: 0, threshold: 0, periodic: 0 };
+const stats = {
+  received: 0,
+  late: 0,
+  rejected: 0,
+  outliers: 0,
+  frames: 0,
+  event: 0,
+  threshold: 0,
+  periodic: 0,
+};
+
+const REASON_LABELS = { event: 'подія', threshold: 'поріг', periodic: 'періодично' } as const;
+
+function describeChange(change: TwinChange): string {
+  const value = change.value === null ? '∅' : String(change.value);
+  return `${change.path} = ${value} (${REASON_LABELS[change.reason]})`;
+}
 
 const client = startIngest({
   onTelemetry(item) {
@@ -80,14 +103,8 @@ function preprocess(item: IncomingTelemetry): void {
 function handleFrame(frame: Frame): void {
   stats.frames++;
   const changes = syncRules.evaluate(frame);
-  for (const change of changes) {
-    stats[change.reason]++;
-    // Події рідкісні й важливі — показуємо кожну
-    if (change.reason === 'event') {
-      console.log(`  ● ${change.signalId} → ${change.value === null ? '∅ (немає даних)' : change.value}`);
-    }
-  }
-  // На кроці 5 зміни застосовуватимуться до стану двійника в пам’яті
+  for (const change of changes) stats[change.reason]++;
+  store.apply(frame, changes);
 }
 
 setInterval(() => {
