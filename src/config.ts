@@ -61,10 +61,17 @@ export const config = {
 
   mqtt: {
     /** Адреса брокера. Можна змінити без правки коду: MQTT_URL=mqtt://host:1883 pnpm dev */
-    url: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
+    url: process.env.MQTT_URL ?? 'mqtt://localhost:1883', // localhost -> 192.168.0.175 to run on other machine
     stationId: 'station1',
     /** Рівень якості доставки телеметрії: 0, 1 або 2 (досліджується на кроці 7). */
     qos: 1 as 0 | 1 | 2,
+  },
+
+  database: {
+    /** Адреса TimescaleDB. Можна змінити без правки коду: DATABASE_URL=postgres://… pnpm dev:sync */
+    url: process.env.DATABASE_URL ?? 'postgres://postgres:password@localhost:5432/postgres', // localhost -> 192.168.0.175 to run on other machine
+    /** Як часто записувати накопичену історію в базу, мс. */
+    flushIntervalMs: 1000,
   },
 
   sync: {

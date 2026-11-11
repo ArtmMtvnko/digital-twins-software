@@ -2,8 +2,10 @@
  * Сервіс синхронізації (КП 3).
  * Конвеєр: приймання → буфер переупорядкування → валідація → фільтр викидів → ресемплінг до 1 Гц
  * → правила синхронізації → стан двійника в пам’яті → сповіщення підписників.
+ * Історія телеметрії й змін стану записується в TimescaleDB.
  */
 import { config } from '../config.ts';
+import { HistoryWriter } from './history.ts';
 import { startIngest, type IncomingTelemetry } from './ingest.ts';
 import { OutlierFilter } from './outlier-filter.ts';
 import { ReorderBuffer } from './reorder-buffer.ts';
@@ -20,6 +22,11 @@ const outlierFilter = new OutlierFilter();
 const resampler = new Resampler(handleFrame);
 const syncRules = new SyncRules();
 const store = new TwinStateStore(config.mqtt.stationId);
+const history = new HistoryWriter();
+await history.init();
+
+// Підписник: кожна зміна стану двійника йде в історію
+store.subscribe((update) => history.addStateUpdate(update));
 
 // Підписник для демонстрації: виводить кожну зміну стану двійника
 store.subscribe(({ state, changes }) => {
@@ -36,6 +43,8 @@ const stats = {
   event: 0,
   threshold: 0,
   periodic: 0,
+  savedTelemetry: 0,
+  savedStateChanges: 0,
 };
 
 const REASON_LABELS = { event: 'подія', threshold: 'поріг', periodic: 'періодично' } as const;
@@ -56,8 +65,11 @@ const client = startIngest({
       return;
     }
 
-    // Запізніле повідомлення (наприклад, з черги брокера після обриву зв’язку) у потік не йде
-    if (!buffer.push(item)) stats.late++;
+    // Запізніле повідомлення (наприклад, з черги брокера після обриву зв’язку) у потік стану не йде,
+    // але в історію телеметрії записується з позначкою late
+    const accepted = buffer.push(item);
+    if (!accepted) stats.late++;
+    history.addTelemetry(item, !accepted);
   },
   onInvalid(topic, errors) {
     stats.rejected++;
@@ -107,16 +119,24 @@ function handleFrame(frame: Frame): void {
   store.apply(frame, changes);
 }
 
+setInterval(async () => {
+  const saved = await history.flush();
+  stats.savedTelemetry += saved.telemetry;
+  stats.savedStateChanges += saved.stateChanges;
+}, config.database.flushIntervalMs);
+
 setInterval(() => {
   console.log(
     `— отримано ${stats.received} | запізнілих ${stats.late} | відхилено ${stats.rejected} | ` +
       `викидів ${stats.outliers} | кадрів ${stats.frames} | ` +
-      `оновлень стану: за подією ${stats.event}, за порогом ${stats.threshold}, періодичних ${stats.periodic}`,
+      `оновлень стану: за подією ${stats.event}, за порогом ${stats.threshold}, періодичних ${stats.periodic} | ` +
+      `у БД: телеметрія ${stats.savedTelemetry}, зміни стану ${stats.savedStateChanges}`,
   );
   for (const key of Object.keys(stats) as (keyof typeof stats)[]) stats[key] = 0;
 }, 1000);
 
 process.on('SIGINT', async () => {
   await client.endAsync();
+  await history.close(); // дописуємо в базу все, що встигли накопичити
   process.exit(0);
 });
