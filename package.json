@@ -14,6 +14,7 @@
     "start:sync": "node dist/sync/index.js",
     "analyze": "tsx scripts/analyze.ts",
     "throughput": "tsx scripts/throughput.ts",
+    "burst": "tsx scripts/burst.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
