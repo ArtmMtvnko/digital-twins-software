@@ -11,6 +11,8 @@ export type Quality = 'measured' | 'held' | 'missing';
 export interface FrameValue {
   value: SensorValue | null;
   quality: Quality;
+  /** Час генерації найсвіжішого вимірювання, з якого взято значення, мс від епохи. */
+  measuredAt: number | null;
 }
 
 /** Кадр: значення всіх сигналів на одну секунду спільної сітки 1 Гц. */
@@ -24,6 +26,14 @@ interface SecondBucket {
   sum: number;
   count: number;
   last: SensorValue;
+  /** Час найсвіжішого вимірювання в цій секунді. */
+  measuredAt: number;
+}
+
+interface KnownValue {
+  value: SensorValue;
+  second: number;
+  measuredAt: number;
 }
 
 const SECOND_MS = 1000;
@@ -36,8 +46,8 @@ const SECOND_MS = 1000;
 export class Resampler {
   /** Вимірювання поточної (ще не закритої) секунди за датчиками. */
   private buckets = new Map<string, SecondBucket>();
-  /** Остання відома величина кожного датчика й секунда, коли її виміряно. */
-  private readonly lastKnown = new Map<string, { value: SensorValue; second: number }>();
+  /** Остання відома величина кожного датчика, секунда й точний час, коли її виміряно. */
+  private readonly lastKnown = new Map<string, KnownValue>();
   /** Початок секунди, яку зараз наповнюємо. */
   private currentSecond: number | null = null;
 
@@ -58,8 +68,9 @@ export class Resampler {
       bucket.sum += typeof value === 'number' ? value : 0;
       bucket.count++;
       bucket.last = value;
+      bucket.measuredAt = Math.max(bucket.measuredAt, measuredAt);
     } else {
-      this.buckets.set(sensorId, { sum: typeof value === 'number' ? value : 0, count: 1, last: value });
+      this.buckets.set(sensorId, { sum: typeof value === 'number' ? value : 0, count: 1, last: value, measuredAt });
     }
     return true;
   }
@@ -68,7 +79,7 @@ export class Resampler {
   seed(sensorId: string, value: SensorValue, measuredAt: number): void {
     const second = Math.floor(measuredAt / SECOND_MS) * SECOND_MS;
     const known = this.lastKnown.get(sensorId);
-    if (!known || known.second < second) this.lastKnown.set(sensorId, { value, second });
+    if (!known || known.second < second) this.lastKnown.set(sensorId, { value, second, measuredAt });
   }
 
   /**
@@ -97,15 +108,15 @@ export class Resampler {
     const bucket = this.buckets.get(signal.id);
     if (bucket) {
       const value = signal.kind === 'continuous' ? round(bucket.sum / bucket.count) : bucket.last;
-      this.lastKnown.set(signal.id, { value, second });
-      return { value, quality: 'measured' };
+      this.lastKnown.set(signal.id, { value, second, measuredAt: bucket.measuredAt });
+      return { value, quality: 'measured', measuredAt: bucket.measuredAt };
     }
 
     const known = this.lastKnown.get(signal.id);
     if (known && (second - known.second) / SECOND_MS <= signal.maxHoldS) {
-      return { value: known.value, quality: 'held' };
+      return { value: known.value, quality: 'held', measuredAt: known.measuredAt };
     }
-    return { value: null, quality: 'missing' };
+    return { value: null, quality: 'missing', measuredAt: null };
   }
 }
 

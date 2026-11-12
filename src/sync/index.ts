@@ -6,6 +6,7 @@
  */
 import { config } from '../config.ts';
 import { HistoryWriter } from './history.ts';
+import { LatencyStats } from './metrics.ts';
 import { startIngest, type IncomingTelemetry } from './ingest.ts';
 import { OutlierFilter } from './outlier-filter.ts';
 import { ReorderBuffer } from './reorder-buffer.ts';
@@ -47,6 +48,15 @@ const stats = {
   savedStateChanges: 0,
 };
 
+// Затримка синхронізації (крок 7)
+/** Від генерації вимірювання на станції до отримання сервісом (MQTT і мережа). */
+const transportLatency = new LatencyStats();
+/** Від генерації вимірювання до оновлення стану двійника (увесь шлях). */
+const stateLatency = new LatencyStats();
+/** Скільки повідомлень оброблено конвеєром за період звіту. */
+let processedInPeriod = 0;
+const LATENCY_REPORT_INTERVAL_S = 10;
+
 const REASON_LABELS = { event: 'подія', threshold: 'поріг', periodic: 'періодично' } as const;
 
 function describeChange(change: TwinChange): string {
@@ -67,6 +77,7 @@ const client = startIngest({
 
     // Запізніле повідомлення (наприклад, з черги брокера після обриву зв’язку) у потік стану не йде,
     // але в історію телеметрії записується з позначкою late
+    transportLatency.add(item.receivedAt - item.measuredAt);
     const accepted = buffer.push(item);
     if (!accepted) stats.late++;
     history.addTelemetry(item, !accepted);
@@ -108,6 +119,7 @@ function preprocess(item: IncomingTelemetry): void {
     cleanValue = filtered.value;
   }
 
+  processedInPeriod++;
   if (!resampler.add(sensorId, cleanValue, item.measuredAt)) stats.late++;
 }
 
@@ -117,7 +129,25 @@ function handleFrame(frame: Frame): void {
   const changes = syncRules.evaluate(frame);
   for (const change of changes) stats[change.reason]++;
   store.apply(frame, changes);
+
+  // Затримку рахуємо лише для свіжих вимірювань: утримані значення генеровано раніше
+  const updatedAt = Date.now();
+  for (const change of changes) {
+    if (change.quality === 'measured' && change.measuredAt !== null) {
+      stateLatency.add(updatedAt - change.measuredAt);
+    }
+  }
 }
+
+setInterval(() => {
+  console.log(
+    `\n=== Характеристики синхронізації за ${LATENCY_REPORT_INTERVAL_S} с ===\n` +
+      `  генерація → отримання (транспорт): ${transportLatency.takeSummary()}\n` +
+      `  генерація → оновлення стану:       ${stateLatency.takeSummary()}\n` +
+      `  пропускна здатність конвеєра:      ${(processedInPeriod / LATENCY_REPORT_INTERVAL_S).toFixed(1)} повідомлень/с\n`,
+  );
+  processedInPeriod = 0;
+}, LATENCY_REPORT_INTERVAL_S * 1000);
 
 setInterval(async () => {
   const saved = await history.flush();

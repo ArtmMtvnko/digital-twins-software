@@ -18,6 +18,8 @@ export interface StateChange {
   value: SensorValue | null;
   quality: Quality;
   reason: SyncReason;
+  /** Час генерації вимірювання, з якого взято значення, мс від епохи. */
+  measuredAt: number | null;
 }
 
 /** Що й коли востаннє записано в стан для кожного сигналу. */
@@ -38,7 +40,13 @@ export class SyncRules {
 
       const reason = this.reasonToSync(signal, entry, frame.time);
       if (reason) {
-        changes.push({ signalId: signal.id, value: entry.value, quality: entry.quality, reason });
+        changes.push({
+          signalId: signal.id,
+          value: entry.value,
+          quality: entry.quality,
+          reason,
+          measuredAt: entry.measuredAt,
+        });
         this.synced.set(signal.id, { value: entry.value, time: frame.time });
       }
     }
