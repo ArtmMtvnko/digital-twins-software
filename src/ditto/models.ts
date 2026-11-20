@@ -2,7 +2,7 @@
  * Моделі двійників насосної станції для Eclipse Ditto.
  *
  * Кожна складова станції — окремий Thing:
- * - attributes — те, що майже не змінюється (тип, назва, паспортні дані);
+ * - attributes — те, що майже не змінюється (тип, назва, паспортні дані, зв’язки з іншими двійниками);
  * - features   — функціональні частини з властивостями, які оновлюються з конвеєра даних.
  * Поки даних від станції немає, властивості мають значення null.
  */
@@ -16,6 +16,19 @@ export type ThingName = 'station' | 'inlet' | 'pump-unit' | 'pump1' | 'pump2' | 
 /** Повний ідентифікатор двійника в Ditto: nspt.station1:pump1 */
 export function thingId(name: ThingName): string {
   return `${NAMESPACE}:${name}`;
+}
+
+/**
+ * Зв’язки з іншими двійниками. Ditto не має вбудованого графа, тож зв’язки зберігаються
+ * в атрибуті relations. Кожне поле — посилання на один двійник:
+ * - partOf       — до складу якого двійника входить цей (входить до складу);
+ * - fedBy        — який двійник подає воду в цей (живить);
+ * - controlledBy — який двійник керує цим (контролює).
+ */
+export interface Relations {
+  partOf?: string;
+  fedBy?: string;
+  controlledBy?: string;
 }
 
 export interface Feature {
@@ -37,6 +50,7 @@ function stationModel(): ThingModel {
       name: 'Насосна станція підвищення тиску',
       buildingsServed: 12,
       residents: 6000,
+      relations: {}, // корінь графа: ні до чого не входить
     },
     features: {
       summary: {
@@ -56,7 +70,12 @@ function stationModel(): ThingModel {
 function inletModel(): ThingModel {
   return {
     thingId: thingId('inlet'),
-    attributes: { type: 'InletNode', name: 'Вхідний вузол', pressureRange: [0, 10] },
+    attributes: {
+      type: 'InletNode',
+      name: 'Вхідний вузол',
+      pressureRange: [0, 10],
+      relations: { partOf: thingId('station') } satisfies Relations,
+    },
     features: {
       hydraulics: {
         properties: {
@@ -72,7 +91,12 @@ function inletModel(): ThingModel {
 function pumpUnitModel(): ThingModel {
   return {
     thingId: thingId('pump-unit'),
-    attributes: { type: 'PumpUnit', name: 'Насосний агрегат', redundancy: '1 робочий + 1 резервний' },
+    attributes: {
+      type: 'PumpUnit',
+      name: 'Насосний агрегат',
+      redundancy: '1 робочий + 1 резервний',
+      relations: { partOf: thingId('station'), fedBy: thingId('inlet') } satisfies Relations,
+    },
     features: {},
   };
 }
@@ -85,6 +109,7 @@ function pumpModel(name: 'pump1' | 'pump2', displayName: string): ThingModel {
       name: displayName,
       nominalSpeed: 2900, // номінальні оберти, об/хв
       ratedPower: 12, // номінальна потужність, кВт
+      relations: { partOf: thingId('pump-unit'), controlledBy: thingId('cabinet') } satisfies Relations,
     },
     features: {
       operation: {
@@ -113,7 +138,13 @@ function pumpModel(name: 'pump1' | 'pump2', displayName: string): ThingModel {
 function outletModel(): ThingModel {
   return {
     thingId: thingId('outlet'),
-    attributes: { type: 'OutletNode', name: 'Напірний вузол', pressureRange: [0, 10], flowRange: [0, 200] },
+    attributes: {
+      type: 'OutletNode',
+      name: 'Напірний вузол',
+      pressureRange: [0, 10],
+      flowRange: [0, 200],
+      relations: { partOf: thingId('station'), fedBy: thingId('pump-unit') } satisfies Relations,
+    },
     features: {
       hydraulics: {
         properties: {
@@ -130,7 +161,11 @@ function outletModel(): ThingModel {
 function cabinetModel(): ThingModel {
   return {
     thingId: thingId('cabinet'),
-    attributes: { type: 'ControlCabinet', name: 'Шафа керування' },
+    attributes: {
+      type: 'ControlCabinet',
+      name: 'Шафа керування',
+      relations: { partOf: thingId('station') } satisfies Relations,
+    },
     features: {
       control: {
         properties: {
