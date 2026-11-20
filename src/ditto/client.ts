@@ -55,6 +55,20 @@ export class DittoClient {
     return result.items;
   }
 
+  /**
+   * Відкриває потік подій Server-Sent Events (Accept: text/event-stream).
+   * Наприклад, /things?namespaces=… — сповіщення про всі зміни двійників простору імен.
+   */
+  async openEventStream(path: string): Promise<ReadableStream<Uint8Array>> {
+    const response = await fetch(`${this.apiUrl}${path}`, {
+      headers: { Authorization: this.authorization, Accept: 'text/event-stream' },
+    });
+    if (!response.ok || !response.body) {
+      throw new Error(`Ditto SSE ${path}: ${response.status} ${await response.text()}`);
+    }
+    return response.body;
+  }
+
   private async request(
     method: string,
     path: string,

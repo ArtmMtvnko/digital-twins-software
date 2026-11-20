@@ -17,6 +17,7 @@
     "burst": "tsx scripts/burst.ts",
     "twins:create": "tsx scripts/create-twins.ts",
     "twins:query": "tsx scripts/query-twins.ts",
+    "twins:watch": "tsx scripts/watch-twins.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
