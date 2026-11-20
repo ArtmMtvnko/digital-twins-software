@@ -38,6 +38,11 @@ export class DittoClient {
     await this.request('PATCH', `/things/${thingId}`, patch, 'application/merge-patch+json');
   }
 
+  /** Записує одну властивість feature. Використовується для значення null (див. DittoAdapter). */
+  async putProperty(thingId: string, feature: string, property: string, value: unknown): Promise<void> {
+    await this.request('PUT', `/things/${thingId}/features/${feature}/properties/${property}`, value);
+  }
+
   /**
    * Пошук двійників за умовою мовою RQL, наприклад eq(attributes/type,"Pump").
    * `fields` обмежує, які частини двійників повернути (наприклад, "thingId,attributes/name").
@@ -50,7 +55,12 @@ export class DittoClient {
     return result.items;
   }
 
-  private async request(method: string, path: string, body?: unknown, contentType = 'application/json'): Promise<Response> {
+  private async request(
+    method: string,
+    path: string,
+    body?: unknown,
+    contentType = 'application/json',
+  ): Promise<Response> {
     const response = await fetch(`${this.apiUrl}${path}`, {
       method,
       headers: {

@@ -5,6 +5,8 @@
  * Історія телеметрії й змін стану записується в TimescaleDB.
  */
 import { config } from '../config.ts';
+import { DittoAdapter } from '../ditto/adapter.ts';
+import { DittoClient } from '../ditto/client.ts';
 import { HistoryWriter } from './history.ts';
 import { LatencyStats } from './metrics.ts';
 import { startIngest, type IncomingTelemetry } from './ingest.ts';
@@ -28,6 +30,10 @@ await history.init();
 
 // Підписник: кожна зміна стану двійника йде в історію
 store.subscribe((update) => history.addStateUpdate(update));
+
+// Підписник: адаптер переносить кожну зміну стану у властивості двійників Eclipse Ditto (КП 4)
+const ditto = new DittoAdapter(new DittoClient());
+store.subscribe((update) => ditto.handle(update));
 
 // Підписник для демонстрації: виводить кожну зміну стану двійника
 store.subscribe(({ state, changes }) => {
@@ -160,9 +166,11 @@ setInterval(() => {
     `— отримано ${stats.received} | запізнілих ${stats.late} | відхилено ${stats.rejected} | ` +
       `викидів ${stats.outliers} | кадрів ${stats.frames} | ` +
       `оновлень стану: за подією ${stats.event}, за порогом ${stats.threshold}, періодичних ${stats.periodic} | ` +
-      `у БД: телеметрія ${stats.savedTelemetry}, зміни стану ${stats.savedStateChanges}`,
+      `у БД: телеметрія ${stats.savedTelemetry}, зміни стану ${stats.savedStateChanges} | ` +
+      `у Ditto: властивостей ${ditto.stats.properties}, запитів ${ditto.stats.requests}, помилок ${ditto.stats.errors}`,
   );
   for (const key of Object.keys(stats) as (keyof typeof stats)[]) stats[key] = 0;
+  for (const key of Object.keys(ditto.stats) as (keyof typeof ditto.stats)[]) ditto.stats[key] = 0;
 }, 1000);
 
 process.on('SIGINT', async () => {
